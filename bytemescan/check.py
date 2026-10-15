@@ -39,7 +39,7 @@ def _fetch_all(item_name: str, rows: int) -> tuple[list[dict], list[str]]:
             endpoints.append(res.get("endpoint"))
             merged.extend(_normalize(r, src) for r in res.get("items", []))
         except Exception as e:  # noqa: BLE001 — 한쪽이 막혀도 다른 쪽 결과는 쓴다
-            endpoints.append(f"{src} ERROR: {e}")
+            endpoints.append(f"{src} ERROR: {client.redact(e)}")   # 키가 섞인 문구가 밖으로 못 나가게(E-094)
     return merged, endpoints
 
 

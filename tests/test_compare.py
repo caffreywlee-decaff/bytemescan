@@ -175,6 +175,43 @@ def test_e093_key_from_env_file():
                 os.environ["DATA_GO_KR_KEY"] = saved
 
 
+def test_e094_error_message_has_no_key():
+    """E-094 회귀: HTTP 403 · 연결 오류 어느 길로 와도 오류 문구 · lookup 결과 어디에도 키가 없다(더미 키 0회)."""
+    import os
+    import requests
+    from bytemescan import check, client
+    KEY = "dummy-key-for-harness"
+    url = f"https://apis.data.go.kr/1471000/X/getX?serviceKey={KEY}&pageNo=1"
+    assert KEY not in client.redact(url) and "serviceKey=***" in client.redact(url)
+    assert client.redact(f"a serviceKey={KEY} b") == "a serviceKey=*** b"
+
+    def fake_403(*a, **k):
+        r = requests.Response(); r.status_code = 403; r.reason = "Forbidden"; r.url = url
+        return r
+
+    def fake_conn(*a, **k):
+        raise requests.ConnectionError(f"HTTPSConnectionPool(host='apis.data.go.kr'): Max retries exceeded with url: /x?serviceKey={KEY}")
+
+    saved_get, saved_env = requests.get, os.environ.get("DATA_GO_KR_KEY")
+    os.environ["DATA_GO_KR_KEY"] = KEY
+    try:
+        for fake, want in ((fake_403, "HTTP 403"), (fake_conn, "연결 실패")):
+            requests.get = fake
+            try:
+                client.search_functional_cosmetics_reported("x")
+                raise AssertionError("오류가 나야 한다")
+            except client.MfdsApiError as e:
+                assert KEY not in str(e) and want in str(e), str(e)
+            blob = repr(check.lookup_cosmetic("x"))
+            assert KEY not in blob and "ERROR" in blob, blob
+    finally:
+        requests.get = saved_get
+        if saved_env is None:
+            os.environ.pop("DATA_GO_KR_KEY", None)
+        else:
+            os.environ["DATA_GO_KR_KEY"] = saved_env
+
+
 if __name__ == "__main__":
     import traceback
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]

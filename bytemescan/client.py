@@ -7,6 +7,7 @@
 """
 
 import os
+import re
 from pathlib import Path
 
 import requests
@@ -17,6 +18,19 @@ TIMEOUT = 40
 
 class MfdsKeyMissing(RuntimeError):
     pass
+
+
+class MfdsApiError(RuntimeError):
+    """API 호출 실패. 문구에 요청 URL 을 담지 않는다 — data.go.kr 은 키를 쿼리스트링으로 받아 URL = 키다(E-094)."""
+
+
+_KEY_RE = re.compile(r"(serviceKey=)[^&\s'\"]+", re.I)
+
+
+def redact(text) -> str:
+    """어떤 문구든 `serviceKey=…` 값은 가린다(E-094, 하네스 V-036 실측 — requests 의 403 문구에 쓰는 사람 키가 통째로 찍혔다).
+    MCP 로 쓰면 오류 문구가 에이전트 대화·로그에 남으므로, 밖으로 나가는 문자열은 전부 이 함수를 거친다."""
+    return _KEY_RE.sub(r"\1***", str(text))
 
 
 def read_env_file(path) -> dict:
@@ -54,9 +68,19 @@ def _key() -> str:
 def _get(svc: str, op: str, extra: dict, rows: int = 100) -> dict:
     url = f"{BASE}/{svc}/{op}"
     params = {"serviceKey": _key(), "pageNo": 1, "numOfRows": rows, "type": "json", **extra}
-    r = requests.get(url, params=params, timeout=TIMEOUT)
-    r.raise_for_status()
-    d = r.json()
+    try:
+        r = requests.get(url, params=params, timeout=TIMEOUT)
+        r.raise_for_status()
+    except requests.HTTPError as e:   # requests 문구는 «403 … for url: <키 포함 URL>» — 상태코드 · 서비스 이름만 남긴다(E-094)
+        resp = e.response
+        status, reason = getattr(resp, "status_code", "?"), (getattr(resp, "reason", "") or "")
+        raise MfdsApiError(f"{op}: HTTP {status} {reason}".rstrip() + " — data.go.kr 응답(키 · 활용신청 상태를 확인하세요)") from None
+    except requests.RequestException as e:   # 연결 오류 문구도 경로 · 쿼리를 품는다
+        raise MfdsApiError(f"{op}: 연결 실패 — {type(e).__name__}") from None
+    try:
+        d = r.json()
+    except ValueError:
+        raise MfdsApiError(f"{op}: 응답이 JSON 이 아님 — {redact(r.text[:120])}") from None
     body = d.get("body") or {}
     header = d.get("header") or {}
     code = header.get("resultCode")
@@ -103,5 +127,5 @@ def search_health_functional(product_name: str, rows: int = 100) -> dict:
                 return res
             last = res
         except Exception as e:  # noqa: BLE001
-            last = {"endpoint": "HtfsInfoService03", "op": "getHtfsItem01", "error": str(e), "items": []}
+            last = {"endpoint": "HtfsInfoService03", "op": "getHtfsItem01", "error": redact(e), "items": []}
     return last or {"items": []}

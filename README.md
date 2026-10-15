@@ -34,7 +34,7 @@ cp .env.example .env                      # DATA_GO_KR_KEY 채우기 — 환경�
 ```
 
 **키**: [data.go.kr](https://www.data.go.kr) 에서 무료 발급 → 아래 **두 서비스**를 "활용신청" → 받은 키를
-`DATA_GO_KR_KEY` 환경변수(또는 `.env`)에 넣습니다. 키는 **쓰는 사람 것**입니다(이 저장소엔 없음).
+`DATA_GO_KR_KEY` 환경변수(또는 `.env`)에 넣습니다. 키는 **쓰는 사람 것**입니다(이 저장소엔 없음). 오류 문구에도 키를 찍지 않습니다(URL 의 `serviceKey=` 값은 가립니다).
 - 기능성화장품 **보고품목** `FtnltCosmRptPrdlstInfoService01`
 - 기능성화장품 **심사품목** `FtnltCosmSrngPrdlstInfoService05` ← 효능 칸이 대부분 채워 있어 꼭 같이
 
@@ -50,7 +50,7 @@ cp .env.example .env                      # DATA_GO_KR_KEY 채우기 — 환경�
 
 ```bash
 # 1. 보고+심사 명부에서 상품명 검색 (+ 각 행의 report_no · 보고 효능 범주)
-bytemescan lookup "선스틱"                                   # (pip install -e . 전이면: python -m bytemescan.cli lookup "선스틱")
+bytemescan lookup "선스틱"                                   # (pip install -e . 전이면: python3 -m bytemescan.cli lookup "선스틱")
 
 # 2·3. 상품명 + 광고 표현 대조
 bytemescan check "더히스토리오브후 공진향 미백팩트" "미백"                        # → REVIEW: 후보 목록 + report_no + 임시 판정
