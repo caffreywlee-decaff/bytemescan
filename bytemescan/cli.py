@@ -2,7 +2,7 @@
 
   python3 -m bytemescan.cli lookup "토너"                                        # 후보 + report_no
   python3 -m bytemescan.cli check "<lookup 에서 고른 상품명>" "미백"                 # 상품명만 → REVIEW(후보 · 임시 판정)
-  python3 -m bytemescan.cli check "<lookup 에서 고른 상품명>" "미백" --no 2024000123   # 번호로 확정 (번호는 보기용 가짜)
+  python3 -m bytemescan.cli check "<lookup 에서 고른 상품명>" "미백" --no <report_no>   # 번호로 확정
 """
 import argparse
 import json

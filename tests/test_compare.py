@@ -12,7 +12,7 @@ def _doc(text):
     return f'<DOC title="효능효과" type="EE"><![CDATA[{text}]]></DOC>'
 
 
-def _row(name, ee, spf=None, entp="A사", date="20240101", cancel="N", doc="", no="2024000001", receipt=None, source="보고"):
+def _row(name, ee, spf=None, entp="A사", date="20240101", cancel="N", doc="", no="0000000001", receipt=None, source="보고"):
     return {"source": source, "REPORT_NO": no, "RECEIPT_NO": receipt, "ITEM_NAME": name, "EE_NAME": ee, "SPF": spf,
             "ENTP_NAME": entp, "REPORT_DATE": date, "CANCEL_APPROVAL_YN": cancel, "EE_DOC_DATA": doc}
 
@@ -89,11 +89,11 @@ def test_review_when_unmapped():
 
 # 🔴 상품명만으로는 확정하지 않는다 (2026-10-15 카프 «신고번호로 하고») — 후보 하나여도 REVIEW
 def test_name_only_single_candidate_is_review_not_match():
-    rows = [_row("미백에센스", "미백", no="2024000777")]
+    rows = [_row("미백에센스", "미백", no="0000000777")]
     r = compare_claim("미백", rows)
     assert r["verdict"] == "REVIEW"
     assert r["needs"] == "report_no"
-    assert r["candidates"][0]["report_no"] == "2024000777"
+    assert r["candidates"][0]["report_no"] == "0000000777"
     assert r["candidates"][0]["provisional"] == "MATCH"
     assert r["identity_warning"]
 
@@ -106,11 +106,11 @@ def test_name_only_multiple_candidates_keep_each_provisional():
 
 
 def test_select_by_report_no_matches_report_or_receipt_number():
-    rows = [_row("크림", "미백", no="2024000001", receipt="202400109034"), _row("크림", "", no="2024000002"),
-            _row("크림", "", no="200409334", source="심사")]
-    assert [x["REPORT_NO"] for x in select_by_report_no(rows, "2024000002")] == ["2024000002"]
-    assert [x["REPORT_NO"] for x in select_by_report_no(rows, "202400109034")] == ["2024000001"]   # 접수번호로도
-    assert [x["REPORT_NO"] for x in select_by_report_no(rows, "제200409334호")] == ["200409334"]   # 글자 섞여도 숫자만 본다
+    rows = [_row("크림", "미백", no="0000000001", receipt="000000109034"), _row("크림", "", no="0000000002"),
+            _row("크림", "", no="000009334", source="심사")]
+    assert [x["REPORT_NO"] for x in select_by_report_no(rows, "0000000002")] == ["0000000002"]
+    assert [x["REPORT_NO"] for x in select_by_report_no(rows, "000000109034")] == ["0000000001"]   # 접수번호로도
+    assert [x["REPORT_NO"] for x in select_by_report_no(rows, "제000009334호")] == ["000009334"]   # 글자 섞여도 숫자만 본다
     assert select_by_report_no(rows, "9999") == []
     assert select_by_report_no(rows, "") == []
 
@@ -126,7 +126,7 @@ def test_confirmed_by_report_no_end_to_end_pure():
 def test_e088_spaced_efficacy_text_still_registers():
     doc = _doc("피부의 미백에 도움을 준다. 피부의 주름 개선에 도움을 준다.")
     assert registered_categories("", None, doc) == ["미백", "주름개선"]
-    rows = [_row("천년비책 선크림", "", doc=doc, no="201206560", source="심사")]
+    rows = [_row("그린 선크림", "", doc=doc, no="000006560", source="심사")]
     assert compare_claim("주름 개선", rows, confirmed=True)["verdict"] == "MATCH"
     assert compare_claim("주름개선", rows, confirmed=True)["verdict"] == "MATCH"
 
