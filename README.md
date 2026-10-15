@@ -11,15 +11,26 @@
 ## 왜 (Why)
 
 광고·상세페이지에는 "미백", "주름개선", "선크림" 같은 기능성 표현이 흔합니다. 그런데 그 제품이 식약처에
-**그 기능성으로 보고**돼 있는지는 따로 확인해야 합니다. 이 도구는 상품명과 표현을 받아 공개 명부에 대조해
-`MATCH / MISMATCH / UNVERIFIABLE / NOT_FOUND / REVIEW` 로 답합니다.
+**그 기능성으로 보고**돼 있는지는 따로 확인해야 합니다. 식약처가 공개 중인 화장품 행정처분 198건을 세어 보면
+137건이 광고 문구 때문이었고, 그중 59%가 "의약품처럼 보이는 말"이었습니다(2026-10-15, 의약품안전나라 공개 목록).
+문구 하나로 그 제품의 광고가 2~4개월 멈춥니다.
+
+공개 명부는 누구나 볼 수 있지만, data.go.kr 에서 서비스 둘을 신청하고 XML 효능 칸을 파싱해야 답이 나옵니다.
+이 도구는 그 입구를 한 줄로 줄입니다 — 상품명과 표현을 받아 보고·심사 명부에 대조해
+`MATCH / MISMATCH / UNVERIFIABLE / NOT_FOUND / REVIEW` 로 답하고, 근거 행(번호 · 업소 · 보고 효능)을 같이 돌려줍니다.
+
+**누가 쓰나**: 자기 브랜드 페이지를 점검하는 사람 · 리셀러 문구를 확인하는 담당자 · 에이전트(Claude Code · Cursor)에서
+"이 제품 이 효능 보고돼 있어?" 를 바로 묻고 싶은 개발자.
+
+**원칙 하나**: 상품명은 식별자가 아닙니다. 그래서 **확정 판정은 신고번호로만** 냅니다(아래 "판정").
 
 ## 설치 (Install)
 
 ```bash
-pip install -r requirements.txt          # CLI
+git clone https://github.com/caffreywlee-decaff/bytemescan.git && cd bytemescan
+pip install -e .                          # CLI 명령 `bytemescan` 이 생깁니다 (어느 폴더에서든)
 pip install "mcp[cli]"                    # MCP 서버도 쓸 때
-cp .env.example .env                      # DATA_GO_KR_KEY 채우기
+cp .env.example .env                      # DATA_GO_KR_KEY 채우기 (.env 는 이 폴더에서 읽습니다 · 환경변수로 줘도 됩니다)
 ```
 
 **키**: [data.go.kr](https://www.data.go.kr) 에서 무료 발급 → 아래 **두 서비스**를 "활용신청" → 받은 키를
@@ -29,29 +40,58 @@ cp .env.example .env                      # DATA_GO_KR_KEY 채우기
 
 > 기능성화장품은 '보고' 또는 '심사' 중 한쪽에 등록됩니다. 그래서 이 도구는 **둘 다 조회해 합칩니다.**
 
+## 쓰는 순서 (How it works, in 3 steps)
+
+1. **찾기** — 상품명으로 후보를 받습니다. 후보마다 `report_no`(보고번호 또는 심사 품목번호) · 업소 · 보고 효능 범주가 붙습니다.
+2. **고르기** — 업소명 · 보고일 · 효능으로 내 제품이 어느 행인지 고릅니다. (판매 페이지에는 보통 번호가 없어 이 단계는 사람이 합니다.)
+3. **확정** — 그 `report_no` 로 표현을 대조하면 `MATCH / MISMATCH / UNVERIFIABLE` 가 나옵니다. 번호 없이 물으면 1번의 후보 목록을 `REVIEW` 로 돌려줍니다.
+
 ## CLI
 
 ```bash
-# 보고+심사 명부에서 상품명 검색 (+ 각 행의 report_no · 보고 효능 범주)
-python -m bytemescan.cli lookup "선스틱"
+# 1. 보고+심사 명부에서 상품명 검색 (+ 각 행의 report_no · 보고 효능 범주)
+bytemescan lookup "선스틱"                                   # (pip install -e . 전이면: python -m bytemescan.cli lookup "선스틱")
 
-# 상품명 + 광고 표현 대조
-python -m bytemescan.cli check "더히스토리오브후 공진향 미백팩트" "미백"                      # → REVIEW: 후보 목록 + report_no + 임시 판정
-python -m bytemescan.cli check "더히스토리오브후 공진향 미백팩트" "미백" --no <lookup의 report_no>   # → MATCH (확정)
-python -m bytemescan.cli check "더히스토리오브후 공진향 미백팩트" "주름개선" --no <같은 번호>       # → MISMATCH (확정)
+# 2·3. 상품명 + 광고 표현 대조
+bytemescan check "더히스토리오브후 공진향 미백팩트" "미백"                        # → REVIEW: 후보 목록 + report_no + 임시 판정
+bytemescan check "더히스토리오브후 공진향 미백팩트" "미백" --no <lookup의 report_no>   # → MATCH (확정)
+bytemescan check "더히스토리오브후 공진향 미백팩트" "주름개선" --no <같은 번호>       # → MISMATCH (확정)
 ```
 
-## MCP (Claude Code · Cursor 등)
+출력은 JSON 입니다 — `verdict` · `reason` · `evidence`(또는 `candidates`) · 조회한 `endpoints` 가 들어 있어 그대로 근거로 남길 수 있습니다.
 
+## MCP 로 쓰기 (Claude Code · Claude Desktop · Cursor)
+
+서버는 stdio 로 뜹니다. 키는 서버를 띄우는 쪽 환경변수(또는 이 폴더의 `.env`)에서 읽습니다.
+
+**Claude Code** — 한 줄로 등록:
 ```bash
-python -m bytemescan.server     # stdio MCP 서버
+claude mcp add bytemescan -e DATA_GO_KR_KEY=여기에_키 -- python -m bytemescan.server
+# 이 저장소 폴더 밖에서 등록하려면 pip install -e . 를 먼저 하거나, -- 뒤를 절대 경로의 python 으로
 ```
 
-도구 둘:
+**Claude Desktop · Cursor** — 설정 파일(`claude_desktop_config.json` / `.cursor/mcp.json`)에:
+```json
+{
+  "mcpServers": {
+    "bytemescan": {
+      "command": "python",
+      "args": ["-m", "bytemescan.server"],
+      "env": { "DATA_GO_KR_KEY": "여기에_키" }
+    }
+  }
+}
+```
+
+등록되면 에이전트가 쓰는 도구 둘:
 - `lookup_functional_cosmetic(item_name)` — 보고+심사 명부 검색 → 후보(`report_no`) + 보고 효능 범주
 - `check_cosmetic_claim(item_name, claim, report_no=None)` — 표현 ↔ 보고 효능 대조. `report_no` 없으면 후보를 `REVIEW` 로, 있으면 확정
 
-예: *"이 선스틱이 자외선차단으로 보고돼 있어?"* / *"이 토너 미백 보고 있어?"*
+이렇게 물으면 됩니다:
+- *"공진향 미백팩트가 미백으로 보고돼 있어?"* → 에이전트가 `lookup` 으로 후보를 보여 주고, 당신이 고른 번호로 `check` 를 다시 부릅니다.
+- *"이 선스틱 자외선차단 보고 있어? 번호는 2012009455야"* → 바로 확정 판정.
+
+직접 띄워 보기: `python -m bytemescan.server`
 
 ## 판정 (Verdicts)
 
@@ -76,8 +116,29 @@ python -m bytemescan.server     # stdio MCP 서버
 ## 테스트
 
 ```bash
-python tests/test_compare.py     # 순수 판정 로직(네트워크 없음)
+python tests/test_compare.py     # 순수 판정 로직 17개(네트워크 없음)
+python -m pytest tests -q        # 같은 시험, pytest 로
 ```
+
+## Quick start (English)
+
+```bash
+git clone https://github.com/caffreywlee-decaff/bytemescan.git && cd bytemescan
+pip install -e . && pip install "mcp[cli]"
+export DATA_GO_KR_KEY=...        # free key from data.go.kr; request the two MFDS "functional cosmetics" services (reported + screened)
+
+bytemescan lookup "sun stick"                                   # candidates with report_no
+bytemescan check "<product name>" "whitening" --no <report_no>   # MATCH / MISMATCH / UNVERIFIABLE
+claude mcp add bytemescan -e DATA_GO_KR_KEY=... -- python -m bytemescan.server   # use it from Claude Code
+```
+
+A product name is not an identifier, so a name-only check returns `REVIEW` with candidates; a verdict is only final once you pass a `report_no`. The tool checks the public registry only. It does not judge legality.
+
+## 만든 곳 (About)
+
+[Lambency](https://lambency-data.github.io/)(데이터 · AI 컨설팅)가 만들었습니다. 판매 페이지 전체를 판매처까지 읽고 사진 속 글자까지 대조하는 일은
+[BYTEME 판매 페이지 건강검진](https://lambency-data.github.io/byteme/)에서 합니다 — 이 도구는 그 일의 공개 데이터 입구만 떼어 낸 것입니다.
+문의 caffrey.w.lee@gmail.com
 
 ## 라이선스
 
