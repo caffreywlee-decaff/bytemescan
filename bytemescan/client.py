@@ -7,6 +7,8 @@
 """
 
 import os
+from pathlib import Path
+
 import requests
 
 BASE = "https://apis.data.go.kr"
@@ -17,12 +19,34 @@ class MfdsKeyMissing(RuntimeError):
     pass
 
 
+def read_env_file(path) -> dict:
+    """`KEY=VALUE` 줄만 읽는 작은 .env 파서(주석 · 빈 줄 · 따옴표 처리, 의존성 없음). 파일이 없으면 {}."""
+    out = {}
+    try:
+        text = Path(path).read_text(encoding="utf-8")
+    except OSError:
+        return out
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        out[k.strip()] = v.strip().strip('"').strip("'")
+    return out
+
+
 def _key() -> str:
+    # 환경변수 → 현재 폴더 .env → 이 저장소 폴더 .env 순. README 가 «.env 를 읽는다» 고 약속하는데 코드가 환경변수만 봤다(E-093, 하네스 V-036 실측).
     k = os.environ.get("DATA_GO_KR_KEY")
     if not k:
+        for p in (Path.cwd() / ".env", Path(__file__).resolve().parent.parent / ".env"):
+            k = read_env_file(p).get("DATA_GO_KR_KEY")
+            if k:
+                break
+    if not k:
         raise MfdsKeyMissing(
-            "환경변수 DATA_GO_KR_KEY 가 없습니다. data.go.kr 에서 무료 키를 받아 해당 서비스를 "
-            "'활용신청'한 뒤 DATA_GO_KR_KEY 로 넣어 주세요(.env 또는 환경변수)."
+            "DATA_GO_KR_KEY 가 없습니다 — 환경변수, 현재 폴더의 .env, 저장소 폴더의 .env 를 차례로 봤습니다. "
+            "data.go.kr 에서 무료 키를 받아 두 서비스를 '활용신청'한 뒤 .env 또는 환경변수로 넣어 주세요."
         )
     return k
 

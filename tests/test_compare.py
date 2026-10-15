@@ -145,6 +145,36 @@ def test_marker_does_not_cross_word_boundary():
     assert registered_categories("", None, _doc("탈모 증상의 완화에 도움")) == ["탈모증상완화"]
 
 
+# E-093 회귀 — README 는 «.env 를 읽는다» 고 하는데 client 가 환경변수만 봤다. 환경변수 → cwd .env → 저장소 .env
+def test_e093_key_from_env_file():
+    import os, tempfile
+    from bytemescan.client import read_env_file, _key, MfdsKeyMissing
+    assert read_env_file("/nonexistent/.env") == {}
+    with tempfile.TemporaryDirectory() as td:
+        p = os.path.join(td, ".env")
+        with open(p, "w", encoding="utf-8") as f:
+            f.write("# 주석\n\nDATA_GO_KR_KEY = 'abc=123'\nOTHER=x\n")
+        assert read_env_file(p) == {"DATA_GO_KR_KEY": "abc=123", "OTHER": "x"}
+        saved = os.environ.pop("DATA_GO_KR_KEY", None); cwd = os.getcwd()
+        try:
+            os.chdir(td)
+            assert _key() == "abc=123"                     # cwd 의 .env 에서
+            os.remove(p)
+            try:
+                _key()
+                raise AssertionError("키 없으면 MfdsKeyMissing 이어야")
+            except MfdsKeyMissing:
+                pass
+            os.environ["DATA_GO_KR_KEY"] = "env-wins"
+            assert _key() == "env-wins"                    # 환경변수가 먼저
+        finally:
+            os.chdir(cwd)
+            if saved is None:
+                os.environ.pop("DATA_GO_KR_KEY", None)
+            else:
+                os.environ["DATA_GO_KR_KEY"] = saved
+
+
 if __name__ == "__main__":
     import traceback
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]

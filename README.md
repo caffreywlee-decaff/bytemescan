@@ -13,7 +13,7 @@
 광고·상세페이지에는 "미백", "주름개선", "선크림" 같은 기능성 표현이 흔합니다. 그런데 그 제품이 식약처에
 **그 기능성으로 보고**돼 있는지는 따로 확인해야 합니다. 식약처가 공개 중인 화장품 행정처분 198건을 세어 보면
 137건이 광고 문구 때문이었고, 그중 59%가 "의약품처럼 보이는 말"이었습니다(2026-10-15, 의약품안전나라 공개 목록).
-문구 하나로 그 제품의 광고가 2~4개월 멈춥니다.
+문구 하나로 그 제품의 광고가 대개 2~4개월 멈춥니다.
 
 공개 명부는 누구나 볼 수 있지만, data.go.kr 에서 서비스 둘을 신청하고 XML 효능 칸을 파싱해야 답이 나옵니다.
 이 도구는 그 입구를 한 줄로 줄입니다 — 상품명과 표현을 받아 보고·심사 명부에 대조해
@@ -30,7 +30,7 @@
 git clone https://github.com/caffreywlee-decaff/bytemescan.git && cd bytemescan
 pip install -e .                          # CLI 명령 `bytemescan` 이 생깁니다 (어느 폴더에서든)
 pip install "mcp[cli]"                    # MCP 서버도 쓸 때
-cp .env.example .env                      # DATA_GO_KR_KEY 채우기 (.env 는 이 폴더에서 읽습니다 · 환경변수로 줘도 됩니다)
+cp .env.example .env                      # DATA_GO_KR_KEY 채우기 — 환경변수 → 현재 폴더 .env → 이 저장소 폴더 .env 순으로 읽습니다
 ```
 
 **키**: [data.go.kr](https://www.data.go.kr) 에서 무료 발급 → 아래 **두 서비스**를 "활용신청" → 받은 키를
@@ -66,8 +66,8 @@ bytemescan check "더히스토리오브후 공진향 미백팩트" "주름개선
 
 **Claude Code** — 한 줄로 등록:
 ```bash
-claude mcp add bytemescan -e DATA_GO_KR_KEY=여기에_키 -- python -m bytemescan.server
-# 이 저장소 폴더 밖에서 등록하려면 pip install -e . 를 먼저 하거나, -- 뒤를 절대 경로의 python 으로
+claude mcp add bytemescan -e DATA_GO_KR_KEY=여기에_키 -- python3 -m bytemescan.server
+# 이 저장소 폴더 밖에서 등록하려면 pip install -e . 를 먼저 하거나, -- 뒤를 절대 경로의 python3 으로. 윈도우는 python3 대신 python
 ```
 
 **Claude Desktop · Cursor** — 설정 파일(`claude_desktop_config.json` / `.cursor/mcp.json`)에:
@@ -75,7 +75,7 @@ claude mcp add bytemescan -e DATA_GO_KR_KEY=여기에_키 -- python -m bytemesca
 {
   "mcpServers": {
     "bytemescan": {
-      "command": "python",
+      "command": "python3",
       "args": ["-m", "bytemescan.server"],
       "env": { "DATA_GO_KR_KEY": "여기에_키" }
     }
@@ -91,7 +91,7 @@ claude mcp add bytemescan -e DATA_GO_KR_KEY=여기에_키 -- python -m bytemesca
 - *"공진향 미백팩트가 미백으로 보고돼 있어?"* → 에이전트가 `lookup` 으로 후보를 보여 주고, 당신이 고른 번호로 `check` 를 다시 부릅니다.
 - *"이 선스틱 자외선차단 보고 있어? 번호는 2012009455야"* → 바로 확정 판정.
 
-직접 띄워 보기: `python -m bytemescan.server`
+직접 띄워 보기: `python3 -m bytemescan.server` (윈도우는 `python`)
 
 ## 판정 (Verdicts)
 
@@ -116,8 +116,8 @@ claude mcp add bytemescan -e DATA_GO_KR_KEY=여기에_키 -- python -m bytemesca
 ## 테스트
 
 ```bash
-python tests/test_compare.py     # 순수 판정 로직 17개(네트워크 없음)
-python -m pytest tests -q        # 같은 시험, pytest 로
+python3 tests/test_compare.py    # 순수 판정 로직(네트워크 없음) — 아무것도 더 깔 필요 없음
+pip install -e ".[dev]" && python3 -m pytest tests -q   # 같은 시험을 pytest 로 (pytest 가 같이 깔림)
 ```
 
 ## Quick start (English)
@@ -129,7 +129,7 @@ export DATA_GO_KR_KEY=...        # free key from data.go.kr; request the two MFD
 
 bytemescan lookup "sun stick"                                   # candidates with report_no
 bytemescan check "<product name>" "whitening" --no <report_no>   # MATCH / MISMATCH / UNVERIFIABLE
-claude mcp add bytemescan -e DATA_GO_KR_KEY=... -- python -m bytemescan.server   # use it from Claude Code
+claude mcp add bytemescan -e DATA_GO_KR_KEY=... -- python3 -m bytemescan.server  # use it from Claude Code
 ```
 
 A product name is not an identifier, so a name-only check returns `REVIEW` with candidates; a verdict is only final once you pass a `report_no`. The tool checks the public registry only. It does not judge legality.
