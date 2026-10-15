@@ -53,9 +53,9 @@ cp .env.example .env                      # DATA_GO_KR_KEY 채우기 — 환경�
 bytemescan lookup "선스틱"                                   # (pip install -e . 전이면: python3 -m bytemescan.cli lookup "선스틱")
 
 # 2·3. 상품명 + 광고 표현 대조
-bytemescan check "더히스토리오브후 공진향 미백팩트" "미백"                        # → REVIEW: 후보 목록 + report_no + 임시 판정
-bytemescan check "더히스토리오브후 공진향 미백팩트" "미백" --no <lookup의 report_no>   # → MATCH (확정)
-bytemescan check "더히스토리오브후 공진향 미백팩트" "주름개선" --no <같은 번호>       # → MISMATCH (확정)
+bytemescan check "<lookup 에서 고른 상품명>" "미백"                        # → REVIEW: 후보 목록 + report_no + 임시 판정
+bytemescan check "<lookup 에서 고른 상품명>" "미백" --no <lookup의 report_no>   # → MATCH (확정)
+bytemescan check "<lookup 에서 고른 상품명>" "주름개선" --no <같은 번호>       # → MISMATCH (확정)
 ```
 
 출력은 JSON 입니다 — `verdict` · `reason` · `evidence`(또는 `candidates`) · 조회한 `endpoints` 가 들어 있어 그대로 근거로 남길 수 있습니다.
@@ -88,7 +88,7 @@ claude mcp add bytemescan -e DATA_GO_KR_KEY=여기에_키 -- python3 -m bytemesc
 - `check_cosmetic_claim(item_name, claim, report_no=None)` — 표현 ↔ 보고 효능 대조. `report_no` 없으면 후보를 `REVIEW` 로, 있으면 확정
 
 이렇게 물으면 됩니다:
-- *"공진향 미백팩트가 미백으로 보고돼 있어?"* → 에이전트가 `lookup` 으로 후보를 보여 주고, 당신이 고른 번호로 `check` 를 다시 부릅니다.
+- *"○○ 미백 에센스가 미백으로 보고돼 있어?"* → 에이전트가 `lookup` 으로 후보를 보여 주고, 당신이 고른 번호로 `check` 를 다시 부릅니다.
 - *"이 선스틱 자외선차단 보고 있어? 번호는 2012009455야"* → 바로 확정 판정.
 
 직접 띄워 보기: `python3 -m bytemescan.server` (윈도우는 `python`)
