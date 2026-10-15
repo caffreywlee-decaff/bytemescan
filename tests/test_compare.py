@@ -136,6 +136,15 @@ def test_e088_ee_name_with_spaces():
     assert registered_categories("자외선 차단") == ["자외선차단"]
 
 
+# V-035b 순수 반례 — 본문 공백을 다 지우거나 글자마다 공백을 허용하면 «문제 모공» 의 «제 모» 가 제모가 된다.
+# 겹낱말 마커(주름|개선)의 경계에서만 공백을 허용하고, 두 글자 낱말 안에는 허용하지 않는다
+def test_marker_does_not_cross_word_boundary():
+    assert registered_categories("", None, _doc("피부 문제 모공 관리에 도움을 준다.")) == []
+    assert registered_categories("", None, _doc("탈 모 방지")) == []                                   # 두 글자 낱말 안 공백은 마커 아님
+    assert registered_categories("", None, _doc("피부의 주름  개선에 도움을 준다.")) == ["주름개선"]   # 겹낱말 경계 공백(둘도) OK
+    assert registered_categories("", None, _doc("탈모 증상의 완화에 도움")) == ["탈모증상완화"]
+
+
 if __name__ == "__main__":
     import traceback
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
