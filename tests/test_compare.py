@@ -122,6 +122,20 @@ def test_confirmed_by_report_no_end_to_end_pure():
     assert compare_claim("미백", select_by_report_no(rows, "3"), confirmed=True)["verdict"] == "NOT_FOUND"
 
 
+# E-088 회귀 — 심사 명부 본문은 «주름 개선» 처럼 띄어 쓴다. 마커를 본문에 그대로 대면 주름 쪽이 체계적으로 MISMATCH 가 난다
+def test_e088_spaced_efficacy_text_still_registers():
+    doc = _doc("피부의 미백에 도움을 준다. 피부의 주름 개선에 도움을 준다.")
+    assert registered_categories("", None, doc) == ["미백", "주름개선"]
+    rows = [_row("천년비책 선크림", "", doc=doc, no="201206560", source="심사")]
+    assert compare_claim("주름 개선", rows, confirmed=True)["verdict"] == "MATCH"
+    assert compare_claim("주름개선", rows, confirmed=True)["verdict"] == "MATCH"
+
+
+def test_e088_ee_name_with_spaces():
+    assert registered_categories("미백 / 주름 개선") == ["미백", "주름개선"]
+    assert registered_categories("자외선 차단") == ["자외선차단"]
+
+
 if __name__ == "__main__":
     import traceback
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]

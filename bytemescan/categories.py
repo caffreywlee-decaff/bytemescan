@@ -79,10 +79,11 @@ def has_efficacy_info(ee_name: str, spf=None, ee_doc_data: str = "") -> bool:
 
 def registered_categories(ee_name: str, spf=None, ee_doc_data: str = "") -> list[str]:
     """EE_NAME + 효능효과 본문(EE_DOC_DATA) + SPF → 이 제품이 보고된 효능 범주 목록."""
-    blob = f"{ee_name or ''} {ee_text(ee_doc_data)}"
+    # 🔴 본문도 claim 처럼 공백을 지우고 댄다 — 심사 명부 본문은 «주름 개선» 처럼 띄어 쓰여 마커 «주름개선» 이 안 걸렸다(E-088, 하네스 V-035 라이브 반례 201206560)
+    blob = _norm(f"{ee_name or ''} {ee_text(ee_doc_data)}")
     cats = []
     for marker, cat in EE_MARKERS.items():
-        if marker in blob and cat not in cats:
+        if _norm(marker) in blob and cat not in cats:
             cats.append(cat)
     if _has_spf(spf) and UV not in cats:
         cats.append(UV)
