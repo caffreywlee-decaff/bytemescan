@@ -63,7 +63,7 @@ def test_mismatch_when_efficacy_present_but_different_confirmed():
 
 def test_unverifiable_when_no_efficacy_info_confirmed():
     # 효능 칸이 전부 비어 판정 불가 (보고 API 흔한 경우) — MISMATCH 로 단정하지 않는다
-    rows = [_row("풋귤 카밍 패드", "")]
+    rows = [_row("그린 카밍 패드", "")]
     r = compare_claim("미백", rows, confirmed=True)
     assert r["verdict"] == "UNVERIFIABLE"
 
