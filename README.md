@@ -30,7 +30,7 @@
 ```bash
 git clone https://github.com/caffreywlee-decaff/bytemescan.git && cd bytemescan
 pip install -e .                          # CLI 명령 `bytemescan` 이 생깁니다 (어느 폴더에서든)
-pip install "mcp[cli]"                    # MCP 서버도 쓸 때
+pip install "mcp[cli]"                    # MCP 서버도 쓸 때 (mcp 1.x · 2.x 둘 다 됩니다)
 cp .env.example .env                      # DATA_GO_KR_KEY 채우기 — 환경변수 → 현재 폴더 .env → 이 저장소 폴더 .env 순으로 읽습니다
 ```
 

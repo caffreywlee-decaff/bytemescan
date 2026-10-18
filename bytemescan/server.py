@@ -1,7 +1,7 @@
 """MCP 서버. 에이전트(Claude Code·Cursor 등)가 아래 도구를 부른다.
 
   pip install "mcp[cli]"
-  python -m bytemescan.server        # stdio MCP 서버
+  python3 -m bytemescan.server       # stdio MCP 서버 (mcp 1.x · 2.x 둘 다)
 
 도구:
   lookup_functional_cosmetic(item_name)                  보고+심사 명부에서 상품명 검색 → 후보(report_no) + 보고 효능 범주
@@ -9,14 +9,26 @@
 """
 from . import check as _check
 
-try:
-    from mcp.server.fastmcp import FastMCP
-except ImportError as e:  # noqa: BLE001
-    raise SystemExit(
-        "mcp 패키지가 필요합니다: pip install \"mcp[cli]\"  (서버 없이 CLI만 쓰려면 python -m bytemescan.cli)"
-    ) from e
 
-mcp = FastMCP("bytemescan")
+
+def server_class():
+    """mcp 1.x 는 `mcp.server.fastmcp.FastMCP`, 2.x 는 `mcp.server.MCPServer` — 둘 다 `.tool()` 과 `.run()`(기본 stdio)이 같다.
+    1.x 만 찾으면 mcp 2.x 사용자는 패키지가 깔려 있어도 «mcp 패키지가 필요합니다» 로 빠졌다(2026-10-18, mcp 2.3.0 실측)."""
+    try:
+        from mcp.server.fastmcp import FastMCP
+        return FastMCP
+    except ImportError:
+        pass
+    try:
+        from mcp.server import MCPServer
+        return MCPServer
+    except ImportError as e:  # noqa: BLE001
+        raise SystemExit(
+            "mcp 패키지가 필요합니다: pip install \"mcp[cli]\"  (서버 없이 CLI만 쓰려면 python3 -m bytemescan.cli)"
+        ) from e
+
+
+mcp = server_class()("bytemescan")
 
 
 @mcp.tool()

@@ -212,6 +212,45 @@ def test_e094_error_message_has_no_key():
             os.environ["DATA_GO_KR_KEY"] = saved_env
 
 
+def test_server_class_mcp_v1_and_v2():
+    """mcp 1.x(FastMCP) · 2.x(MCPServer) 둘 다 서버 클래스를 찾고, 둘 다 없으면 안내와 함께 끝난다(2026-10-18 mcp 2.3.0 에서 1.x 경로만 찾다 죽음)."""
+    import importlib, sys, types
+    saved = {k: v for k, v in sys.modules.items() if k == "mcp" or k.startswith("mcp.") or k == "bytemescan.server"}
+    def fake(v1: bool, v2: bool):
+        for k in list(sys.modules):
+            if k == "mcp" or k.startswith("mcp.") or k == "bytemescan.server":
+                del sys.modules[k]
+        m = types.ModuleType("mcp"); s = types.ModuleType("mcp.server"); m.server = s
+        class _S:
+            def __init__(self, name): self.name = name; self.tools = []
+            def tool(self):
+                def deco(f): self.tools.append(f.__name__); return f
+                return deco
+            def run(self): pass
+        sys.modules["mcp"], sys.modules["mcp.server"] = m, s
+        if v1:
+            f = types.ModuleType("mcp.server.fastmcp"); f.FastMCP = type("FastMCP", (_S,), {}); sys.modules["mcp.server.fastmcp"] = f
+        if v2:
+            s.MCPServer = type("MCPServer", (_S,), {})
+    try:
+        for v1, v2, want in ((True, False, "FastMCP"), (False, True, "MCPServer"), (True, True, "FastMCP")):
+            fake(v1, v2)
+            srv = importlib.import_module("bytemescan.server")
+            assert type(srv.mcp).__name__ == want, (v1, v2, type(srv.mcp).__name__)
+            assert srv.mcp.tools == ["lookup_functional_cosmetic", "check_cosmetic_claim"], srv.mcp.tools
+        fake(False, False)
+        try:
+            importlib.import_module("bytemescan.server")
+            raise AssertionError("mcp 없으면 SystemExit 이어야")
+        except SystemExit as e:
+            assert "mcp 패키지가 필요합니다" in str(e)
+    finally:
+        for k in list(sys.modules):
+            if k == "mcp" or k.startswith("mcp.") or k == "bytemescan.server":
+                del sys.modules[k]
+        sys.modules.update(saved)
+
+
 if __name__ == "__main__":
     import traceback
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
